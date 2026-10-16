@@ -861,7 +861,7 @@ const Gist = {
     if (Array.isArray(s.pur)) Store._w(K_PUR, s.pur)
     if (Array.isArray(s.con)) Store._w(K_CON, s.con)
     if (Array.isArray(s.adj)) Store._w(K_ADJ, s.adj)
-    if (Array.isArray(s.lib)) Store.setCustomLib(s.lib)
+    if (Array.isArray(s.lib)) Store._w(K_LIB, s.lib)
     if (Array.isArray(s.tomb)) localStorage.setItem(K_TOMB, JSON.stringify(s.tomb))
   },
   async _api(method, path, body) {
@@ -893,6 +893,7 @@ const Gist = {
   },
   async sync() {
     if (!this.enabled()) return
+    if (this._cooldown && Date.now() < this._cooldown) return
     if (this._busy) { this._pending = true; return }
     this._busy = true; this._pending = false
     setSyncStatus('syncing')
@@ -902,9 +903,16 @@ const Gist = {
       const merged = this.merge(local, remote || { pur: [], con: [], adj: [], lib: [], tomb: [] })
       this.applyToLocal(merged)
       await this.push(merged)
+      this._cooldown = 0
       setSyncStatus('ok', merged.synced_at)
       render()
-    } catch (e) { setSyncStatus('err', null, e && e.message) }
+    } catch (e) {
+      const m = (e && e.message) || ''
+      if (/403|rate limit/i.test(m)) {
+        this._cooldown = Date.now() + 10 * 60 * 1000   // 被限流：停 10 分钟再试
+        setSyncStatus('err', null, m + '（已暂停 10 分钟后自动重试）')
+      } else setSyncStatus('err', null, m)
+    }
     finally {
       this._busy = false
       if (this._pending) { this._pending = false; this.sync() }

@@ -1,7 +1,7 @@
 /* Nice的罐罐食堂 · Service Worker
    作用：把页面外壳缓存到本地，让「添加到主屏幕」后能离线打开、秒开。
    只缓存静态资源；数据本身存在 localStorage，与本文件无关。 */
-const CACHE = 'catcan-v15'
+const CACHE = 'catcan-v16'
 const ASSETS = [
   './',
   './index.html',
