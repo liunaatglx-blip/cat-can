@@ -86,6 +86,23 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .stock-filter{display:flex;align-items:center;gap:10px;margin:14px 0 6px}
 .stock-filter .sf-label{font-size:12.5px;font-weight:600;color:var(--ink2);flex:none}
 .stock-filter .sf-sel{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 12px;outline:none;font-size:14px;color:var(--ink);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23577674' d='M1 1l5 5 5-5'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
+.pala-stars{display:inline-block;line-height:1}
+.pala-stars .star{font-size:17px;color:#dfe9e7;margin-right:1px;cursor:pointer;transition:color .12s}
+.pala-stars .star.on{color:#f0a93c}
+.stars{display:inline-flex;gap:1px;line-height:1}
+.stars .star{font-size:15px;color:#e6ddc9}
+.stars .star.on{color:#f0a93c}
+.pala-val{margin-left:8px;font-size:13px;color:var(--ink2);vertical-align:middle}
+.chip.pala-zero{background:#fbeee7;color:#c0623f}
+.chip.pala-zero.on{background:#e2604f;color:#fff}
+.pala-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.pala-name{font-weight:700;font-size:14.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pala-stock{flex:none;font-size:12px;color:var(--ink2);background:#eef4f3;border-radius:99px;padding:3px 10px}
+.pala-stock.low{color:#c0623f;background:#fbeee7}
+.pala-score{display:flex;align-items:center;gap:8px}
+.pala-avg{font-size:16px;font-weight:800;color:#e0902a}
+.pala-avg small{font-size:11px;font-weight:500;color:var(--muted)}
+.pala-n{font-size:12px;color:var(--muted)}
 .search:focus{border-color:var(--accent)}
 
 .seg{display:flex;background:#eef6f5;border-radius:12px;padding:3px;margin-bottom:13px}
@@ -332,6 +349,16 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
     </div>
     <div class="tip">数据只存在本机浏览器 · 换设备请用「导出备份」搬家</div>
   </section>
+
+  <!-- 适口性 -->
+  <section id="view-pala" class="hidden">
+    <div class="stock-filter">
+      <span class="sf-label">品牌</span>
+      <select id="pala-brand" class="sf-sel"></select>
+    </div>
+    <div class="tip" style="margin:4px 0 12px">按评分从高到低排，挑分高的回购 👇</div>
+    <div id="pala-list"></div>
+  </section>
 </main>
 
 <button class="fab" id="btn-add" title="记一笔">
@@ -343,6 +370,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
   <button id="tab-stock" class="on"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6.2" rx="6.8" ry="2.9"/><path d="M5.2 6.2v11.6c0 1.6 3.05 2.9 6.8 2.9s6.8-1.3 6.8-2.9V6.2"/><path d="M5.2 12.1c0 1.6 3.05 2.9 6.8 2.9s6.8-1.3 6.8-2.9"/></svg></span>库存</button>
   <button id="tab-log"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8.6 6.5h11"/><path d="M8.6 12h11"/><path d="M8.6 17.5h11"/><circle cx="4.4" cy="6.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="4.4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4.4" cy="17.5" r="1.5" fill="currentColor" stroke="none"/></svg></span>记录</button>
   <button id="tab-stats"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M4.4 20V12.2"/><path d="M9.9 20V5.4"/><path d="M15.4 20v-5.2"/><path d="M20.9 20V8.6"/></svg></span>统计</button>
+  <button id="tab-pala"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.3 4.9 5.3.7-3.9 3.8.9 5.4L12 16.9 7.4 19.4l.9-5.4L4.4 9.2l5.3-.7z"/></svg></span>适口性</button>
 </nav>
 
 <!-- 记一笔 -->
@@ -400,7 +428,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
         <div><label>消耗日期 *</label><input id="out-date" type="date"/></div>
       </div>
       <div class="calcbox" id="out-calc">按库存均价计费</div>
-      <label>适口性打分（0–10，可空，再点一次取消）</label>
+      <label>适口性打分（点星星，0–10，再点一次取消）</label>
       <div class="chips" id="out-pala-chips"></div>
       <label>备注</label><input id="out-note" placeholder="可选"/>
       <div class="err" id="out-err"></div>
@@ -990,8 +1018,8 @@ function rangeOf(kind, from, to) {
 const inRange = (d, from, to) => !!d && d >= from && d <= to
 
 /* ======================= 渲染 ======================= */
-let logFilter = 'all', kw = '', statRange = 'month', customFrom = '', customTo = '', stockBrand = 'all'
-function render() { const stock = buildStock(); renderStock(stock); renderLog(); renderStats(stock) }
+let logFilter = 'all', kw = '', statRange = 'month', customFrom = '', customTo = '', stockBrand = 'all', palaBrand = 'all'
+function render() { const stock = buildStock(); renderStock(stock); renderLog(); renderStats(stock); if ($('#view-pala') && !$('#view-pala').classList.contains('hidden')) renderPala() }
 
 /* ======================= 食堂横幅 ======================= */
 const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -1054,9 +1082,9 @@ function renderStock(stock) {
   renderBanner(withStock)
   const sel = $('#stock-brand')
   if (sel) {
-    const brands = Array.from(new Set(all.map(s => (s.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+    const brands = Array.from(new Set(withStock.map(s => (s.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
     if (!brands.includes(stockBrand)) stockBrand = 'all'
-    sel.innerHTML = '<option value="all">全部品牌（' + withStock.length + '）</option>' + brands.map(b => '<option value="' + esc(b) + '"' + (b === stockBrand ? ' selected' : '') + '>' + esc(b) + '</option>').join('')
+    sel.innerHTML = '<option value="all">全部品牌（' + brands.length + '）</option>' + brands.map(b => '<option value="' + esc(b) + '"' + (b === stockBrand ? ' selected' : '') + '>' + esc(b) + '</option>').join('')
   }
   const arr = withStock.filter(s => stockBrand === 'all' || s.brand === stockBrand).sort((a, b) => b.value - a.value || b.stock - a.stock)
   const se = $('#stock-empty')
@@ -1082,6 +1110,31 @@ function renderStock(stock) {
       </div>
     </div>`).join('')
 }
+const PALA_LABELS = ['不爱吃', '', '一般', '', '还行', '', '喜欢', '', '很爱', '', '超爱']
+function starRow(v) {
+  const n = Math.max(0, Math.min(10, Math.round(num(v))))
+  let h = '<span class="stars">'
+  for (let i = 1; i <= 10; i++) h += '<span class="star' + (i <= n ? ' on' : '') + '">★</span>'
+  return h + '</span>'
+}
+function renderPala() {
+  const all = Object.values(buildStock())
+  const brands = Array.from(new Set(all.map(s => (s.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+  if (!brands.includes(palaBrand)) palaBrand = 'all'
+  const sel = $('#pala-brand')
+  if (sel) sel.innerHTML = '<option value="all">全部品牌</option>' + brands.map(b => '<option value="' + esc(b) + '"' + (b === palaBrand ? ' selected' : '') + '>' + esc(b) + '</option>').join('')
+  const list = all.filter(s => s.palaN > 0 && (palaBrand === 'all' || s.brand === palaBrand)).sort((a, b) => b.pala - a.pala || b.palaN - a.palaN)
+  $('#pala-list').innerHTML = list.length ? list.map(s => `
+    <div class="card" style="padding:12px 14px">
+      <div class="pala-row">
+        <div class="pala-name">${esc(s.brand)} <span style="color:var(--ink2);font-weight:500">${esc(s.flavor || '')}</span>${s.spec ? ' <span class="badge">' + s.spec + 'g</span>' : ''}</div>
+        <div class="pala-stock${s.stock <= 0 ? ' low' : ''}">库存 ${s.stock} 罐</div>
+      </div>
+      <div class="pala-score">${starRow(s.pala)}<span class="pala-avg">${s.pala.toFixed(1)}<small>/10</small></span><span class="pala-n">${s.palaN} 人评分</span></div>
+    </div>`).join('')
+    : '<div class="empty"><div class="etitle">还没有评分</div><div class="esub">在「记一笔 → 消耗」里给罐头打个分，就会出现在这里</div></div>'
+}
+
 const PALETTE = ['#2eb8a0','#5b9ede','#5fbf9a','#dfa04c','#a06bff','#f0855f','#3bc2c2','#d96ba0']
 const colorOf = s => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 997; return PALETTE[h % PALETTE.length] }
 
@@ -1168,7 +1221,7 @@ function setAddMode(m) {
   $('#add-title').textContent = editing ? (m === 'in' ? '编辑购入' : '编辑消耗') : (m === 'in' ? '记一次购入' : '记一次消耗')
   $('#btn-save-in').textContent = (editing && m === 'in') ? '保存修改' : '保存购入'
   $('#btn-save-out').textContent = (editing && m === 'out') ? '保存修改' : '保存消耗'
-  if (m === 'out') renderOutChips()
+  if (m === 'out') { renderOutChips(); renderPalaChips() }
 }
 function closeAdd() { editing = null; hide('#m-add') }
 function openAdd(m) {
@@ -1271,8 +1324,11 @@ function renderPlatChips() {
   $('#in-plat-chips').innerHTML = PLATFORMS.map(p => `<span class="chip" data-plat="${esc(p)}">${esc(p)}</span>`).join('')
 }
 function renderPalaChips() {
-  let h = ''
-  for (let i = 0; i <= 10; i++) h += `<span class="chip ${outPala === i ? 'on' : ''}" data-pala="${i}">${i}</span>`
+  let h = '<span class="chip pala-zero' + (outPala === 0 ? ' on' : '') + '" data-pala="0">不爱吃</span>'
+  h += '<span class="pala-stars">'
+  for (let i = 1; i <= 10; i++) h += `<span class="star ${i <= outPala ? 'on' : ''}" data-pala="${i}">★</span>`
+  h += '</span>'
+  h += '<span class="pala-val">' + (outPala === null ? '未评分' : outPala + ' 分' + (PALA_LABELS[outPala] ? ' · ' + PALA_LABELS[outPala] : '')) + '</span>'
   $('#out-pala-chips').innerHTML = h
 }
 function saveOut() {
@@ -1496,14 +1552,18 @@ function switchTab(v) {
   $('#view-stock').classList.toggle('hidden', v !== 'stock')
   $('#view-log').classList.toggle('hidden', v !== 'log')
   $('#view-stats').classList.toggle('hidden', v !== 'stats')
+  $('#view-pala').classList.toggle('hidden', v !== 'pala')
   $('#tab-stock').classList.toggle('on', v === 'stock')
   $('#tab-log').classList.toggle('on', v === 'log')
   $('#tab-stats').classList.toggle('on', v === 'stats')
+  $('#tab-pala').classList.toggle('on', v === 'pala')
+  if (v === 'pala') renderPala()
   window.scrollTo(0, 0)
 }
 $('#tab-stock').onclick = () => switchTab('stock')
 $('#tab-log').onclick = () => switchTab('log')
 $('#tab-stats').onclick = () => switchTab('stats')
+$('#tab-pala').onclick = () => switchTab('pala')
 
 $('#btn-add').onclick = () => openAdd('in')
 $('#stock-list').onclick = e => { const b = e.target.closest('[data-count]'); if (b) openCount(b.dataset.count, null) }
@@ -1586,6 +1646,7 @@ $('#lib-new-save').onclick = () => {
 $('#log-seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; logFilter = b.dataset.f; $$('#log-seg button').forEach(x => x.classList.toggle('on', x === b)); renderLog() }
 $('#kw').oninput = e => { kw = e.target.value; renderLog() }
 $('#stock-brand').onchange = e => { stockBrand = e.target.value; renderStock(buildStock()) }
+$('#pala-brand').onchange = e => { palaBrand = e.target.value; renderPala() }
 $('#log-list').onclick = e => {
   const ed = e.target.closest('[data-edit]')
   if (ed) {
