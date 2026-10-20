@@ -103,6 +103,16 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .pala-avg{font-size:16px;font-weight:800;color:#e0902a}
 .pala-avg small{font-size:11px;font-weight:500;color:var(--muted)}
 .pala-n{font-size:12px;color:var(--muted)}
+.pala-rows{margin-top:10px;border-top:1px dashed #e6efed;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.pala-ritem{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);flex-wrap:wrap}
+.pala-ritem .pr-date{font-variant-numeric:tabular-nums;color:var(--muted)}
+.pala-ritem .pr-score{font-weight:700;color:#e0902a}
+.pala-ritem .pr-rec{font-size:11px;background:#e4f4f0;color:var(--accent-d);border-radius:99px;padding:1px 7px}
+.pala-ritem .pr-note{color:var(--muted);overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pala-ritem .pr-ops{margin-left:auto;display:flex;gap:2px}
+.pala-ritem .pr-ops button{background:none;border:none;color:#c6d5d4;font-size:14px;padding:2px 3px;cursor:pointer}
+.pala-ritem .pr-ops button:active{color:var(--accent)}
+.pr-more{font-size:11.5px;color:var(--muted)}
 .search:focus{border-color:var(--accent)}
 
 .seg{display:flex;background:#eef6f5;border-radius:12px;padding:3px;margin-bottom:13px}
@@ -352,6 +362,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
 
   <!-- 适口性 -->
   <section id="view-pala" class="hidden">
+    <button class="btn" id="btn-add-rating" style="margin-bottom:12px">⭐ 给罐头打一次分</button>
     <div class="stock-filter">
       <span class="sf-label">品牌</span>
       <select id="pala-brand" class="sf-sel"></select>
@@ -380,6 +391,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
     <div class="seg" id="add-seg">
       <button data-m="in" class="on">🛒 购入</button>
       <button data-m="out">🍽️ 消耗</button>
+      <button data-m="pala">⭐ 打分</button>
     </div>
 
     <div id="form-in">
@@ -428,11 +440,31 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
         <div><label>消耗日期 *</label><input id="out-date" type="date"/></div>
       </div>
       <div class="calcbox" id="out-calc">按库存均价计费</div>
-      <label>适口性打分（点星星，0–10，再点一次取消）</label>
-      <div class="chips" id="out-pala-chips"></div>
       <label>备注</label><input id="out-note" placeholder="可选"/>
       <div class="err" id="out-err"></div>
       <button class="btn" id="btn-save-out">保存消耗</button>
+    </div>
+
+    <div id="form-pala" class="hidden">
+      <label>给哪个罐头打分（点一下自动填入）</label>
+      <div class="chips" id="pr-pick-chips"></div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <input id="pr-brand" placeholder="品牌" class="grow" autocomplete="off"/>
+        <button class="mini-btn" id="pr-pick-sku">品类库</button>
+      </div>
+      <div class="suggest hidden" id="pr-brand-sug"></div>
+      <div class="row2">
+        <div><label>口味</label><input id="pr-flavor" placeholder="口味" autocomplete="off"/><div class="suggest hidden" id="pr-flavor-sug"></div></div>
+        <div><label>规格（g）</label><input id="pr-spec" type="number" inputmode="decimal" min="0" placeholder="400" autocomplete="off"/><div class="suggest hidden" id="pr-spec-sug"></div></div>
+      </div>
+      <label>适口性打分（点星星，0–10，再点一次取消）</label>
+      <div class="chips" id="pr-chips"></div>
+      <div class="row2">
+        <div><label>日期</label><input id="pr-date" type="date"/></div>
+        <div><label>备注</label><input id="pr-note" placeholder="可选"/></div>
+      </div>
+      <div class="err" id="pr-err"></div>
+      <button class="btn" id="btn-save-pala">保存评分</button>
     </div>
   </div>
 </div>
@@ -775,7 +807,7 @@ const BN_PRESETS = [
 const BN_DEFAULT = { title: 'Nice 的罐罐够吃吗？', c1: '#43c9ad', c2: '#4ea0e2', preset: '薄荷', op: 100, img: '' }
 
 /* ======================= 数据层 ======================= */
-const K_PUR = 'catcan_purchases_v2', K_CON = 'catcan_consumptions_v2', K_ADJ = 'catcan_adjusts_v1', K_NICK = 'catcan_nick', K_OLD = 'catcan_items_v1', K_LIB = 'catcan_custom_lib_v1', K_BAN = 'catcan_banner_v1', K_AV = 'catcan_avatar_v1', K_TOMB = 'catcan_tomb_v1', K_REC = 'catcan_recorder_v1'
+const K_PUR = 'catcan_purchases_v2', K_CON = 'catcan_consumptions_v2', K_ADJ = 'catcan_adjusts_v1', K_NICK = 'catcan_nick', K_OLD = 'catcan_items_v1', K_LIB = 'catcan_custom_lib_v1', K_BAN = 'catcan_banner_v1', K_AV = 'catcan_avatar_v1', K_TOMB = 'catcan_tomb_v1', K_REC = 'catcan_recorder_v1', K_RAT = 'catcan_ratings_v1'
 const Store = {
   _r(k) { try { return JSON.parse(localStorage.getItem(k)) || [] } catch (e) { return [] } },
   _w(k, a) { localStorage.setItem(k, JSON.stringify(a)) },
@@ -818,7 +850,16 @@ const Store = {
     a[i] = Object.assign({}, a[i], patch, { id: a[i].id, created_at: a[i].created_at, updated_at: new Date().toISOString() }); this._w(K_ADJ, a); return a[i]
   },
   delAdjust(id) { this._w(K_ADJ, this.adjustments().filter(x => x.id !== id)); this._addTomb(id) },
-  clear() { this.purchases().concat(this.consumptions(), this.adjustments()).forEach(x => this._addTomb(x.id)); this._w(K_PUR, []); this._w(K_CON, []); this._w(K_ADJ, []) },
+  /* 适口性评分：独立于消耗记录，可单独打分（不需要记消耗才能评） */
+  ratings() { return this._r(K_RAT) },
+  addRating(r) { const a = this.ratings(); const x = Object.assign({ id: uid(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), rec: this.recorder() || '我' }, r); a.push(x); this._w(K_RAT, a); return x },
+  updateRating(id, patch) {
+    const a = this.ratings(), i = a.findIndex(x => x.id === id)
+    if (i < 0) return null
+    a[i] = Object.assign({}, a[i], patch, { id: a[i].id, created_at: a[i].created_at, updated_at: new Date().toISOString() }); this._w(K_RAT, a); return a[i]
+  },
+  delRating(id) { this._w(K_RAT, this.ratings().filter(x => x.id !== id)); this._addTomb(id) },
+  clear() { this.purchases().concat(this.consumptions(), this.adjustments(), this.ratings()).forEach(x => this._addTomb(x.id)); this._w(K_PUR, []); this._w(K_CON, []); this._w(K_ADJ, []); this._w(K_RAT, []) },
   /* 删除 / 清空 的墓碑：共享时让"删除"也能同步到对方（被墓碑的记录永不再出现） */
   tomb() { try { return JSON.parse(localStorage.getItem(K_TOMB)) || [] } catch (e) { return [] } },
   _addTomb(id) { if (!id) return; const t = this.tomb(); if (!t.includes(id)) { t.push(id); localStorage.setItem(K_TOMB, JSON.stringify(t)) } },
@@ -865,9 +906,9 @@ const Gist = {
   enabled() { return localStorage.getItem(GON) === '1' && this.token() && this.gid() },
   setEnabled(v) { localStorage.setItem(GON, v ? '1' : '0') },
   _busy: false, _pending: false, _t: null, _poll: null,
-  snapshot() { return { v: 2, pur: Store.purchases(), con: Store.consumptions(), adj: Store.adjustments(), lib: Store.customLib(), tomb: Store.tomb(), synced_at: new Date().toISOString() } },
+  snapshot() { return { v: 2, pur: Store.purchases(), con: Store.consumptions(), adj: Store.adjustments(), rat: Store.ratings(), lib: Store.customLib(), tomb: Store.tomb(), synced_at: new Date().toISOString() } },
   merge(local, remote) {
-    remote = remote || { pur: [], con: [], adj: [], lib: [], tomb: [] }
+    remote = remote || { pur: [], con: [], adj: [], rat: [], lib: [], tomb: [] }
     const tomb = new Set([].concat(local.tomb || [], remote.tomb || []))
     const mergeArr = (la, ra) => {
       const m = new Map()
@@ -886,6 +927,7 @@ const Gist = {
       pur: mergeArr(local.pur, remote.pur),
       con: mergeArr(local.con, remote.con),
       adj: mergeArr(local.adj, remote.adj),
+      rat: mergeArr(local.rat, remote.rat),
       lib: mergeArr(local.lib, remote.lib),
       tomb: Array.from(tomb),
       synced_at: new Date().toISOString()
@@ -896,6 +938,7 @@ const Gist = {
     if (Array.isArray(s.pur)) Store._w(K_PUR, s.pur)
     if (Array.isArray(s.con)) Store._w(K_CON, s.con)
     if (Array.isArray(s.adj)) Store._w(K_ADJ, s.adj)
+    if (Array.isArray(s.rat)) Store._w(K_RAT, s.rat)
     if (Array.isArray(s.lib)) Store._w(K_LIB, s.lib)
     if (Array.isArray(s.tomb)) localStorage.setItem(K_TOMB, JSON.stringify(s.tomb))
   },
@@ -958,7 +1001,7 @@ const Gist = {
   stopPoll() { if (this._poll) { clearInterval(this._poll); this._poll = null } }
 }
 /* 让所有"记账数据"的改动自动触发同步（横幅/头像/昵称不进共享） */
-;['addPurchase','addConsumption','delPurchase','delConsumption','updatePurchase','updateConsumption','addAdjust','updateAdjust','delAdjust','clear','setCustomLib','addToLib','delFromLib','clearLib'].forEach(n => {
+;['addPurchase','addConsumption','delPurchase','delConsumption','updatePurchase','updateConsumption','addAdjust','updateAdjust','delAdjust','addRating','updateRating','delRating','clear','setCustomLib','addToLib','delFromLib','clearLib'].forEach(n => {
   const o = Store[n]
   if (typeof o === 'function') Store[n] = function() { const r = o.apply(this, arguments); Gist.scheduleSync(); return r }
 })
@@ -994,9 +1037,19 @@ function buildStock() {
   Store.consumptions().forEach(c => {
     const s = ensure(c.brand, c.flavor, c.spec_weight)
     s.outQty += num(c.qty)
+    // 兼容：早期版本把适口性打在消耗记录上，老数据继续算进去
     if (c.palatability !== undefined && c.palatability !== null && c.palatability !== '') {
       s.palaSum = (s.palaSum || 0) + num(c.palatability); s.palaN = (s.palaN || 0) + 1
     }
+  })
+  // 适口性评分（独立记录，不依赖消耗）
+  Store.ratings().forEach(r => {
+    const s = ensure(r.brand, r.flavor, r.spec_weight)
+    const sc = num(r.score)
+    if (r.score !== undefined && r.score !== null && r.score !== '') {
+      s.palaSum = (s.palaSum || 0) + sc; s.palaN = (s.palaN || 0) + 1
+    }
+    if ((r.rate_date || '') > (s.lastRate || '')) { s.lastRate = r.rate_date || ''; s.lastScore = sc }
   })
   Object.values(m).forEach(s => {
     s.stock = s.buyQty - s.outQty + s.adjQty
@@ -1123,16 +1176,34 @@ function renderPala() {
   if (!brands.includes(palaBrand)) palaBrand = 'all'
   const sel = $('#pala-brand')
   if (sel) sel.innerHTML = '<option value="all">全部品牌</option>' + brands.map(b => '<option value="' + esc(b) + '"' + (b === palaBrand ? ' selected' : '') + '>' + esc(b) + '</option>').join('')
+  const ratBy = {}
+  Store.ratings().forEach(r => { const k = skuKey(r.brand, r.flavor, r.spec_weight); (ratBy[k] = ratBy[k] || []).push(r) })
+  Object.values(ratBy).forEach(a => a.sort((x, y) => (y.rate_date || '').localeCompare(x.rate_date || '')))
   const list = all.filter(s => s.palaN > 0 && (palaBrand === 'all' || s.brand === palaBrand)).sort((a, b) => b.pala - a.pala || b.palaN - a.palaN)
-  $('#pala-list').innerHTML = list.length ? list.map(s => `
+  $('#pala-list').innerHTML = list.length ? list.map(s => {
+    const rows = (ratBy[s.key] || []).slice(0, 5)
+    const detail = rows.length ? `
+      <div class="pala-rows">
+        ${rows.map(r => `<div class="pala-ritem">
+          <span class="pr-date">${esc(r.rate_date || '—')}</span>
+          <span class="pr-score">${num(r.score)} 分${PALA_LABELS[num(r.score)] ? ' · ' + PALA_LABELS[num(r.score)] : ''}</span>
+          ${r.rec ? '<span class="pr-rec">' + esc(r.rec) + '</span>' : ''}
+          ${r.note ? '<span class="pr-note">' + esc(r.note) + '</span>' : ''}
+          <span class="pr-ops"><button data-redit="${r.id}" title="编辑">✎</button><button data-rdel="${r.id}" title="删除">✕</button></span>
+        </div>`).join('')}
+        ${(ratBy[s.key] || []).length > rows.length ? '<div class="pr-more">…共 ' + (ratBy[s.key] || []).length + ' 次评分</div>' : ''}
+      </div>` : ''
+    return `
     <div class="card" style="padding:12px 14px">
       <div class="pala-row">
         <div class="pala-name">${esc(s.brand)} <span style="color:var(--ink2);font-weight:500">${esc(s.flavor || '')}</span>${s.spec ? ' <span class="badge">' + s.spec + 'g</span>' : ''}</div>
         <div class="pala-stock${s.stock <= 0 ? ' low' : ''}">库存 ${s.stock} 罐</div>
       </div>
       <div class="pala-score">${starRow(s.pala)}<span class="pala-avg">${s.pala.toFixed(1)}<small>/10</small></span><span class="pala-n">${s.palaN} 人评分</span></div>
-    </div>`).join('')
-    : '<div class="empty"><div class="etitle">还没有评分</div><div class="esub">在「记一笔 → 消耗」里给罐头打个分，就会出现在这里</div></div>'
+      ${detail}
+    </div>`
+  }).join('')
+    : '<div class="empty"><div class="etitle">还没有评分</div><div class="esub">点上面的「⭐ 给罐头打一次分」，不用记消耗也能评</div></div>'
 }
 
 const PALETTE = ['#2eb8a0','#5b9ede','#5fbf9a','#dfa04c','#a06bff','#f0855f','#3bc2c2','#d96ba0']
@@ -1211,17 +1282,21 @@ function renderStats(stock) {
 const show = id => $(id).classList.remove('hidden')
 const hide = id => $(id).classList.add('hidden')
 
-let addMode = 'in', priceMode = 'unit', outPala = null, editing = null
+let addMode = 'in', priceMode = 'unit', palaScore = null, editing = null
 function setAddMode(m) {
   addMode = m
   $$('#add-seg button').forEach(b => b.classList.toggle('on', b.dataset.m === m))
   $('#add-seg').classList.toggle('hidden', !!editing)
   $('#form-in').classList.toggle('hidden', m !== 'in')
   $('#form-out').classList.toggle('hidden', m !== 'out')
-  $('#add-title').textContent = editing ? (m === 'in' ? '编辑购入' : '编辑消耗') : (m === 'in' ? '记一次购入' : '记一次消耗')
+  $('#form-pala').classList.toggle('hidden', m !== 'pala')
+  const T = { in: '购入', out: '消耗', pala: '评分' }
+  $('#add-title').textContent = editing ? ('编辑' + (T[m] || '记录')) : ('记一次' + (T[m] || '记录'))
   $('#btn-save-in').textContent = (editing && m === 'in') ? '保存修改' : '保存购入'
   $('#btn-save-out').textContent = (editing && m === 'out') ? '保存修改' : '保存消耗'
-  if (m === 'out') { renderOutChips(); renderPalaChips() }
+  $('#btn-save-pala').textContent = (editing && m === 'pala') ? '保存修改' : '保存评分'
+  if (m === 'out') renderOutChips()
+  if (m === 'pala') { renderPrPickChips(); renderPalaChips() }
 }
 function closeAdd() { editing = null; hide('#m-add') }
 function openAdd(m) {
@@ -1232,12 +1307,28 @@ function openAdd(m) {
     $('#in-qty').value = '1'; $('#in-price').value = ''; $('#in-note').value = ''
     $('#in-plat').value = ''; $('#in-date').value = today(); $('#in-err').textContent = ''
     renderPlatChips(); setPriceMode('unit')
+  } else if (m === 'pala') {
+    $('#pr-brand').value = ''; $('#pr-flavor').value = ''; $('#pr-spec').value = ''
+    $('#pr-date').value = today(); $('#pr-note').value = ''; $('#pr-err').textContent = ''
+    palaScore = null; renderPalaChips(); renderPrPickChips()
   } else {
     $('#out-brand').value = ''; $('#out-flavor').value = ''; $('#out-spec').value = ''
     $('#out-qty').value = '1'; $('#out-date').value = today(); $('#out-note').value = ''
     $('#out-err').textContent = ''; $('#out-stockinfo').textContent = '选一个品类，看当前库存和均价'
-    outPala = null; renderPalaChips(); calcOut()
+    calcOut()
   }
+  show('#m-add')
+}
+/* 编辑一条适口性评分（从适口性页进入） */
+function openEditRating(id) {
+  const r = Store.ratings().find(x => x.id === id); if (!r) return
+  editing = { t: 'pala', id }
+  setAddMode('pala')
+  $('#pr-brand').value = r.brand || ''; $('#pr-flavor').value = r.flavor || ''
+  $('#pr-spec').value = num(r.spec_weight) || ''; $('#pr-date').value = r.rate_date || today()
+  $('#pr-note').value = r.note || ''; $('#pr-err').textContent = ''
+  palaScore = (r.score === undefined || r.score === null || r.score === '') ? null : num(r.score)
+  renderPalaChips(); renderPrPickChips()
   show('#m-add')
 }
 /* 编辑一条已有记录：把原值填回表单，保存时改为更新 */
@@ -1263,8 +1354,7 @@ function openEdit(t, id) {
     $('#out-spec').value = num(c.spec_weight) || ''; $('#out-qty').value = num(c.qty) || 1
     $('#out-date').value = c.eat_date || today(); $('#out-note').value = c.note || ''
     $('#out-err').textContent = ''
-    outPala = (c.palatability === undefined || c.palatability === null || c.palatability === '') ? null : num(c.palatability)
-    renderPalaChips(); calcOut()
+    calcOut()
   }
   show('#m-add')
 }
@@ -1324,12 +1414,35 @@ function renderPlatChips() {
   $('#in-plat-chips').innerHTML = PLATFORMS.map(p => `<span class="chip" data-plat="${esc(p)}">${esc(p)}</span>`).join('')
 }
 function renderPalaChips() {
-  let h = '<span class="chip pala-zero' + (outPala === 0 ? ' on' : '') + '" data-pala="0">不爱吃</span>'
+  let h = '<span class="chip pala-zero' + (palaScore === 0 ? ' on' : '') + '" data-pala="0">不爱吃</span>'
   h += '<span class="pala-stars">'
-  for (let i = 1; i <= 10; i++) h += `<span class="star ${i <= outPala ? 'on' : ''}" data-pala="${i}">★</span>`
+  for (let i = 1; i <= 10; i++) h += `<span class="star ${i <= palaScore ? 'on' : ''}" data-pala="${i}">★</span>`
   h += '</span>'
-  h += '<span class="pala-val">' + (outPala === null ? '未评分' : outPala + ' 分' + (PALA_LABELS[outPala] ? ' · ' + PALA_LABELS[outPala] : '')) + '</span>'
-  $('#out-pala-chips').innerHTML = h
+  h += '<span class="pala-val">' + (palaScore === null ? '未评分' : palaScore + ' 分' + (PALA_LABELS[palaScore] ? ' · ' + PALA_LABELS[palaScore] : '')) + '</span>'
+  $('#pr-chips').innerHTML = h
+}
+/* 打分时可选的候选：买过 / 吃过的品类，已评过分的标出均分 */
+function renderPrPickChips() {
+  const all = Object.values(buildStock()).sort((a, b) => (b.palaN || 0) - (a.palaN || 0) || b.stock - a.stock)
+  const arr = all.filter(s => s.buyQty > 0 || s.stock > 0 || s.palaN > 0).slice(0, 24)
+  $('#pr-pick-chips').innerHTML = arr.length
+    ? arr.map(s => `<span class="chip" data-pb="${esc(s.brand)}" data-pf="${esc(s.flavor)}" data-ps="${s.spec}">${esc(s.brand)} ${esc(s.flavor || '')}${s.spec ? ' ' + s.spec + 'g' : ''}${s.palaN ? ' · 已评' : ''}</span>`).join('')
+    : '<span class="hintline">还没有品类，可直接手动输入或从「品类库」选</span>'
+}
+function savePala() {
+  const e = $('#pr-err')
+  const rawBrand = $('#pr-brand').value.trim(), flavor = $('#pr-flavor').value.trim(), spec = num($('#pr-spec').value)
+  if (!rawBrand) return e.textContent = '请填品牌'
+  if (palaScore === null) return e.textContent = '请点星星打个分（0–10）'
+  const date = $('#pr-date').value || today()
+  const hit = libBrandOfName(rawBrand)
+  const brand = hit ? hit.name : rawBrand
+  e.textContent = ''
+  const rec = { brand, flavor, spec_weight: spec, score: palaScore, rate_date: date, note: $('#pr-note').value.trim() }
+  if (editing && editing.t === 'pala') { Store.updateRating(editing.id, rec); closeAdd(); toast('已更新评分'); render(); return }
+  Store.addRating(rec)
+  const learned = autoLearn(brand, flavor, spec)
+  closeAdd(); toast('已记评分 · ' + palaScore + ' 分' + (learned ? ' · 新品类已入库' : '')); render()
 }
 function saveOut() {
   const rawBrand = $('#out-brand').value.trim(), flavor = $('#out-flavor').value.trim(), spec = num($('#out-spec').value)
@@ -1348,7 +1461,7 @@ function saveOut() {
   e.textContent = ''
   // 同品类沿用原成本快照；换了品类则按新品类当前库存均价
   const cost = (isEdit && editing.origKey === key) ? editing.origCost : (s ? s.avg : 0)
-  const rec = { brand, flavor, spec_weight: spec, qty, unit_cost: cost, eat_date: date, palatability: outPala, note: $('#out-note').value.trim() }
+  const rec = { brand, flavor, spec_weight: spec, qty, unit_cost: cost, eat_date: date, note: $('#out-note').value.trim() }
   const learned = autoLearn(brand, flavor, spec)
   const tip = learned ? ' · 新品类已入库' : ''
   if (isEdit) {
@@ -1466,6 +1579,7 @@ function applySku() {
   if (!libBrand) return
   const set = (bp, fp, sp) => { $(bp).value = libBrand.name; $(fp).value = libFlavor; $(sp).value = libSpec || '' }
   if (skuTarget === 'in') set('#in-brand', '#in-flavor', '#in-spec')
+  else if (skuTarget === 'pala') set('#pr-brand', '#pr-flavor', '#pr-spec')
   else { set('#out-brand', '#out-flavor', '#out-spec'); calcOut() }
   hide('#m-sku')
 }
@@ -1577,10 +1691,16 @@ $('#in-price').oninput = calcIn
 $('#in-qty').oninput = calcIn
 $('#btn-save-in').onclick = saveIn
 $('#btn-save-out').onclick = saveOut
+$('#btn-save-pala').onclick = savePala
+$('#pr-pick-sku').onclick = () => openSku('pala')
+$('#pr-pick-chips').onclick = e => {
+  const c = e.target.closest('[data-pb]'); if (!c) return
+  $('#pr-brand').value = c.dataset.pb; $('#pr-flavor').value = c.dataset.pf; $('#pr-spec').value = c.dataset.ps || ''
+}
 $('#in-pick-sku').onclick = () => openSku('in')
 $('#out-pick-sku').onclick = () => openSku('out')
 $('#in-plat-chips').onclick = e => { const c = e.target.closest('[data-plat]'); if (!c) return; $('#in-plat').value = c.dataset.plat }
-$('#out-pala-chips').onclick = e => { const c = e.target.closest('[data-pala]'); if (!c) return; const v = num(c.dataset.pala); outPala = (outPala === v ? null : v); renderPalaChips() }
+$('#pr-chips').onclick = e => { const c = e.target.closest('[data-pala]'); if (!c) return; const v = num(c.dataset.pala); palaScore = (palaScore === v ? null : v); renderPalaChips() }
 
 // 输入联想绑定（品牌 / 口味 / 规格）
 bindSuggest('in-brand', 'in-brand-sug', () => brandNames())
@@ -1589,6 +1709,9 @@ bindSuggest('in-spec', 'in-spec-sug', () => specNames($('#in-brand').value))
 bindSuggest('out-brand', 'out-brand-sug', () => brandNames())
 bindSuggest('out-flavor', 'out-flavor-sug', () => flavorNames($('#out-brand').value))
 bindSuggest('out-spec', 'out-spec-sug', () => specNames($('#out-brand').value))
+bindSuggest('pr-brand', 'pr-brand-sug', () => brandNames())
+bindSuggest('pr-flavor', 'pr-flavor-sug', () => flavorNames($('#pr-brand').value))
+bindSuggest('pr-spec', 'pr-spec-sug', () => specNames($('#pr-brand').value))
 $('#out-chips').onclick = e => {
   const c = e.target.closest('.chip'); if (!c) return
   $('#out-brand').value = c.dataset.b; $('#out-flavor').value = c.dataset.f; $('#out-spec').value = c.dataset.s || ''
@@ -1647,6 +1770,13 @@ $('#log-seg').onclick = e => { const b = e.target.closest('button'); if (!b) ret
 $('#kw').oninput = e => { kw = e.target.value; renderLog() }
 $('#stock-brand').onchange = e => { stockBrand = e.target.value; renderStock(buildStock()) }
 $('#pala-brand').onchange = e => { palaBrand = e.target.value; renderPala() }
+$('#btn-add-rating').onclick = () => openAdd('pala')
+$('#pala-list').onclick = e => {
+  const ed = e.target.closest('[data-redit]')
+  if (ed) { openEditRating(ed.dataset.redit); return }
+  const dl = e.target.closest('[data-rdel]')
+  if (dl) { if (confirm('删掉这条评分？')) { Store.delRating(dl.dataset.rdel); render(); toast('已删除评分') } }
+}
 $('#log-list').onclick = e => {
   const ed = e.target.closest('[data-edit]')
   if (ed) {
@@ -1723,7 +1853,7 @@ $('#btn-mylib-clear').onclick = () => {
   Store.clearLib(); renderMyLib(); toast('已清空自定义品类')
 }
 $('#btn-export').onclick = () => {
-  const data = { app: 'cat-can', version: 2, exported_at: new Date().toISOString(), purchases: Store.purchases(), consumptions: Store.consumptions(), adjustments: Store.adjustments(), custom_lib: Store.customLib(), banner: Store.banner(), avatar: Store.avatar() }
+  const data = { app: 'cat-can', version: 2, exported_at: new Date().toISOString(), purchases: Store.purchases(), consumptions: Store.consumptions(), adjustments: Store.adjustments(), ratings: Store.ratings(), custom_lib: Store.customLib(), banner: Store.banner(), avatar: Store.avatar() }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob), a = document.createElement('a')
   a.href = url; a.download = '罐罐食堂备份-' + today().replace(/-/g, '') + '.json'
@@ -1746,7 +1876,8 @@ $('#file-import').onchange = e => {
       const [p1, n1] = merge(Store.purchases(), ps)
       const [c1, n2] = merge(Store.consumptions(), cs)
       const [a1, n3] = merge(Store.adjustments(), d.adjustments)
-      localStorage.setItem(K_PUR, JSON.stringify(p1)); localStorage.setItem(K_CON, JSON.stringify(c1)); localStorage.setItem(K_ADJ, JSON.stringify(a1))
+      const [r1, n4] = merge(Store.ratings(), d.ratings)
+      localStorage.setItem(K_PUR, JSON.stringify(p1)); localStorage.setItem(K_CON, JSON.stringify(c1)); localStorage.setItem(K_ADJ, JSON.stringify(a1)); localStorage.setItem(K_RAT, JSON.stringify(r1))
       // 自定义品类库一并合并
       if (Array.isArray(d.custom_lib) && d.custom_lib.length) {
         const cur = Store.customLib()
@@ -1759,14 +1890,14 @@ $('#file-import').onchange = e => {
       if (d.banner && typeof d.banner === 'object') Store.setBanner(d.banner)
       if (typeof d.avatar === 'string') Store.setAvatar(d.avatar)
       loadAvatar(); if (d.avatar) liveBanner()
-      hide('#m-set'); toast('已导入 ' + (n1 + n2 + n3) + ' 条'); render(); Gist.scheduleSync()
+      hide('#m-set'); toast('已导入 ' + (n1 + n2 + n3 + n4) + ' 条'); render(); Gist.scheduleSync()
     } catch (err) { toast('文件解析失败') }
     e.target.value = ''
   }
   r.readAsText(f)
 }
 $('#btn-clear').onclick = () => {
-  const n = Store.purchases().length + Store.consumptions().length + Store.adjustments().length
+  const n = Store.purchases().length + Store.consumptions().length + Store.adjustments().length + Store.ratings().length
   if (!n) return toast('本来就没有数据')
   if (confirm(`确定清空全部数据（${n} 条记录）？不可恢复，建议先导出。`) && confirm('再确认一次：真的要全部删掉？')) {
     Store.clear(); Store.setNick('猫奴'); hide('#m-set'); toast('已清空'); render()
@@ -1850,15 +1981,21 @@ function buildXlsx() {
   rows1.push(...all)
   const rows2 = [['品牌', '口味', '规格(g)', '库存(罐)', '库存均价(¥/罐)', '库存价值(¥)', '适口性均分', '评分次数', '最近购入']]
   Object.values(stock).filter(s => s.stock > 0).sort((a, b) => b.value - a.value).forEach(s => rows2.push([s.brand, s.flavor, s.spec, s.stock, s.avg, s.value, s.pala !== null ? Math.round(s.pala * 10) / 10 : '', s.palaN || '', s.lastBuy || '']))
+  const rows3 = [['日期', '品牌', '口味', '规格(g)', '评分(0-10)', '评价', '备注', '记录人', '当前库存']]
+  Store.ratings().slice().sort((a, b) => String(b.rate_date || '').localeCompare(String(a.rate_date || ''))).forEach(r => {
+    const st = stock[skuKey(r.brand, r.flavor, r.spec_weight)]
+    rows3.push([r.rate_date || '', r.brand, r.flavor || '', num(r.spec_weight), num(r.score), PALA_LABELS[num(r.score)] || '', r.note || '', r.rec || '', st ? st.stock : ''])
+  })
   return zipStore([
-    { name: '[Content_Types].xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+    { name: '[Content_Types].xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
     { name: '_rels/.rels', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
-    { name: 'xl/_rels/workbook.xml.rels', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
-    { name: 'xl/workbook.xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="流水" sheetId="1" r:id="rId1"/><sheet name="库存" sheetId="2" r:id="rId2"/></sheets></workbook>') },
+    { name: 'xl/_rels/workbook.xml.rels', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+    { name: 'xl/workbook.xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="流水" sheetId="1" r:id="rId1"/><sheet name="库存" sheetId="2" r:id="rId2"/><sheet name="适口性" sheetId="3" r:id="rId3"/></sheets></workbook>') },
     { name: 'xl/styles.xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2EB8A0"/><bgColor indexed="64"/></patternFill></fill></fills><borders><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>') },
     { name: 'xl/sharedStrings.xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="0" uniqueCount="0"/>') },
     { name: 'xl/worksheets/sheet1.xml', data: u8(sheetXml(rows1)) },
-    { name: 'xl/worksheets/sheet2.xml', data: u8(sheetXml(rows2)) }
+    { name: 'xl/worksheets/sheet2.xml', data: u8(sheetXml(rows2)) },
+    { name: 'xl/worksheets/sheet3.xml', data: u8(sheetXml(rows3)) }
   ])
 }
 const escXml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]))
@@ -1880,13 +2017,13 @@ function sheetXml(rows) {
   return s
 }
 $('#btn-export-xlsx').onclick = () => {
-  const n = Store.purchases().length + Store.consumptions().length + Store.adjustments().length
+  const n = Store.purchases().length + Store.consumptions().length + Store.adjustments().length + Store.ratings().length
   if (!n) return toast('还没有数据，先记一笔再导出')
   const blob = buildXlsx()
   const url = URL.createObjectURL(blob), a = document.createElement('a')
   a.href = url; a.download = '罐罐食堂-' + today().replace(/-/g, '') + '.xlsx'
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000)
-  toast('已导出 Excel（流水 ' + (Store.purchases().length + Store.consumptions().length + Store.adjustments().length) + ' 行 + 库存）')
+  toast('已导出 Excel（流水 ' + (Store.purchases().length + Store.consumptions().length + Store.adjustments().length) + ' 行 + 库存 + 适口性 ' + Store.ratings().length + ' 条）')
 }
 
 
