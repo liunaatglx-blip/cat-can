@@ -83,6 +83,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .bn-thumb{width:60px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--line);flex:none}
 
 .search{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;outline:none;min-width:0}
+.stock-filter{display:flex;align-items:center;gap:10px;margin:14px 0 6px}
+.stock-filter .sf-label{font-size:12.5px;font-weight:600;color:var(--ink2);flex:none}
+.stock-filter .sf-sel{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 12px;outline:none;font-size:14px;color:var(--ink);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23577674' d='M1 1l5 5 5-5'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
 .search:focus{border-color:var(--accent)}
 
 .seg{display:flex;background:#eef6f5;border-radius:12px;padding:3px;margin-bottom:13px}
@@ -261,6 +264,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
           <div class="bn-stat"><b id="bn-days">—</b><span>预计可吃</span></div>
         </div>
       </div>
+    </div>
+    <div class="stock-filter">
+      <span class="sf-label">品牌</span>
+      <select id="stock-brand" class="sf-sel"></select>
     </div>
     <div id="stock-list"></div>
     <div class="empty hidden" id="stock-empty"><div class="etitle">罐罐还没进货</div><div class="esub">点右下角的爪印 ＋ 记一次购入吧</div></div>
@@ -983,7 +990,7 @@ function rangeOf(kind, from, to) {
 const inRange = (d, from, to) => !!d && d >= from && d <= to
 
 /* ======================= 渲染 ======================= */
-let logFilter = 'all', kw = '', statRange = 'month', customFrom = '', customTo = ''
+let logFilter = 'all', kw = '', statRange = 'month', customFrom = '', customTo = '', stockBrand = 'all'
 function render() { const stock = buildStock(); renderStock(stock); renderLog(); renderStats(stock) }
 
 /* ======================= 食堂横幅 ======================= */
@@ -1042,9 +1049,23 @@ function renderBnPresets() {
 }
 
 function renderStock(stock) {
-  const arr = Object.values(stock).filter(s => s.stock > 0).sort((a, b) => b.value - a.value || b.stock - a.stock)
-  renderBanner(arr)
-  $('#stock-empty').classList.toggle('hidden', arr.length > 0)
+  const all = Object.values(stock)
+  const withStock = all.filter(s => s.stock > 0)
+  renderBanner(withStock)
+  const sel = $('#stock-brand')
+  if (sel) {
+    const brands = Array.from(new Set(all.map(s => (s.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+    if (!brands.includes(stockBrand)) stockBrand = 'all'
+    sel.innerHTML = '<option value="all">全部品牌（' + withStock.length + '）</option>' + brands.map(b => '<option value="' + esc(b) + '"' + (b === stockBrand ? ' selected' : '') + '>' + esc(b) + '</option>').join('')
+  }
+  const arr = withStock.filter(s => stockBrand === 'all' || s.brand === stockBrand).sort((a, b) => b.value - a.value || b.stock - a.stock)
+  const se = $('#stock-empty')
+  se.classList.toggle('hidden', arr.length > 0)
+  if (arr.length === 0) {
+    const t = se.querySelector('.etitle'), sub = se.querySelector('.esub')
+    if (stockBrand !== 'all' && withStock.length > 0) { t.textContent = '该品牌暂无库存'; sub.textContent = '换个品牌或记一笔购入吧' }
+    else { t.textContent = '罐罐还没进货'; sub.textContent = '点右下角的爪印 ＋ 记一次购入吧' }
+  }
   $('#stock-list').innerHTML = arr.map(s => `
     <div class="card" style="padding:0 15px">
       <div class="stock-item">
@@ -1564,6 +1585,7 @@ $('#lib-new-save').onclick = () => {
 // 记录
 $('#log-seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; logFilter = b.dataset.f; $$('#log-seg button').forEach(x => x.classList.toggle('on', x === b)); renderLog() }
 $('#kw').oninput = e => { kw = e.target.value; renderLog() }
+$('#stock-brand').onchange = e => { stockBrand = e.target.value; renderStock(buildStock()) }
 $('#log-list').onclick = e => {
   const ed = e.target.closest('[data-edit]')
   if (ed) {
