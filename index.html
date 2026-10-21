@@ -289,6 +289,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
         <div class="bn-sub" id="bn-sub">记下每一笔，就知道崽的口粮还够几天</div>
         <div class="bn-stats">
           <div class="bn-stat"><b id="bn-cans">0</b><span>库存罐数</span></div>
+          <div class="bn-stat"><b id="bn-grams">0 g</b><span>库存总重</span></div>
           <div class="bn-stat"><b id="bn-sku">0</b><span>品类</span></div>
           <div class="bn-stat"><b id="bn-value">¥0.00</b><span>库存价值</span></div>
           <div class="bn-stat"><b id="bn-days">—</b><span>预计可吃</span></div>
@@ -1080,27 +1081,30 @@ function render() { const stock = buildStock(); renderStock(stock); renderLog();
 /* ======================= 食堂横幅 ======================= */
 const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 const shiftDay = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return fmtD(d) }
-function eatenPerDay() {
+function eatenWeightPerDay() {
   const from = shiftDay(-30)
-  const qty = Store.consumptions().filter(c => (c.eat_date || '') >= from).reduce((n, c) => n + num(c.qty), 0)
-  return qty / 30
+  const w = Store.consumptions().filter(c => (c.eat_date || '') >= from).reduce((n, c) => n + num(c.qty) * num(c.spec_weight), 0)
+  return w / 30
 }
 function renderBanner(arr) {
   const b = Store.banner()
   const cans = arr.reduce((n, s) => n + s.stock, 0)
+  const grams = arr.reduce((n, s) => n + s.stock * num(s.spec), 0)
   const value = arr.reduce((n, s) => n + s.value, 0)
-  const rate = eatenPerDay()
-  const days = rate > 0 ? Math.floor(cans / rate + 1e-9) : -1
+  const rateW = eatenWeightPerDay()
+  const days = rateW > 0 ? Math.floor(grams / rateW + 1e-9) : -1
 
   $('#bn-date').textContent = (new Date().getMonth() + 1) + '月' + new Date().getDate() + '日 ' + WEEK[new Date().getDay()]
   $('#bn-cans').textContent = String(cans)
+  $('#bn-grams').textContent = Math.round(grams) + ' g'
   $('#bn-sku').textContent = String(arr.length)
   $('#bn-value').textContent = money(value)
   $('#bn-days').textContent = days >= 0 ? days + ' 天' : '—'
 
   let sub
   if (!cans) sub = '罐罐见底了，该补货啦'
-  else if (rate > 0) sub = '近 30 天日均 ' + (Math.round(rate * 100) / 100) + ' 罐 · 按这个速度还能吃 ' + days + ' 天'
+  else if (grams === 0) sub = '有些罐头没填规格(g)，补上规格就能按重量预估可吃天数'
+  else if (rateW > 0) sub = '近 30 天日均 ' + Math.round(rateW) + ' g · 按这个速度还能吃 ' + days + ' 天'
   else sub = '还没记过消耗，记几笔就能算出能吃多久'
   $('#bn-sub').textContent = sub
   $('#bn-title').textContent = b.title || BN_DEFAULT.title
