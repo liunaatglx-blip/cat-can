@@ -103,6 +103,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .pala-avg{font-size:16px;font-weight:800;color:#e0902a}
 .pala-avg small{font-size:11px;font-weight:500;color:var(--muted)}
 .pala-n{font-size:12px;color:var(--muted)}
+.pala-meta{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12.5px;flex-wrap:wrap}
+.pala-meta .pala-price{font-weight:800;color:var(--accent-d)}
+.pala-meta .pala-val2{color:var(--muted)}
 .pala-rows{margin-top:10px;border-top:1px dashed #e6efed;padding-top:8px;display:flex;flex-direction:column;gap:6px}
 .pala-ritem{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);flex-wrap:wrap}
 .pala-ritem .pr-date{font-variant-numeric:tabular-nums;color:var(--muted)}
@@ -1200,6 +1203,7 @@ function renderPala() {
         <div class="pala-stock${s.stock <= 0 ? ' low' : ''}">库存 ${s.stock} 罐</div>
       </div>
       <div class="pala-score">${starRow(s.pala)}<span class="pala-avg">${s.pala.toFixed(1)}<small>/10</small></span><span class="pala-n">${s.palaN} 人评分</span></div>
+      <div class="pala-meta"><span class="pala-price">均价 ${money(s.avg)}/罐</span><span class="pala-val2">库存价值 ${money(s.value)}</span></div>
       ${detail}
     </div>`
   }).join('')
@@ -1426,7 +1430,7 @@ function renderPrPickChips() {
   const all = Object.values(buildStock()).sort((a, b) => (b.palaN || 0) - (a.palaN || 0) || b.stock - a.stock)
   const arr = all.filter(s => s.buyQty > 0 || s.stock > 0 || s.palaN > 0).slice(0, 24)
   $('#pr-pick-chips').innerHTML = arr.length
-    ? arr.map(s => `<span class="chip" data-pb="${esc(s.brand)}" data-pf="${esc(s.flavor)}" data-ps="${s.spec}">${esc(s.brand)} ${esc(s.flavor || '')}${s.spec ? ' ' + s.spec + 'g' : ''}${s.palaN ? ' · 已评' : ''}</span>`).join('')
+    ? arr.map(s => `<span class="chip" data-pb="${esc(s.brand)}" data-pf="${esc(s.flavor)}" data-ps="${s.spec}">${esc(s.brand)} ${esc(s.flavor || '')}${s.spec ? ' ' + s.spec + 'g' : ''}${s.buyQty > 0 ? ' · ' + money(s.avg) + '/罐' : ''}${s.palaN ? ' · 已评' : ''}</span>`).join('')
     : '<span class="hintline">还没有品类，可直接手动输入或从「品类库」选</span>'
 }
 function savePala() {
@@ -1981,10 +1985,10 @@ function buildXlsx() {
   rows1.push(...all)
   const rows2 = [['品牌', '口味', '规格(g)', '库存(罐)', '库存均价(¥/罐)', '库存价值(¥)', '适口性均分', '评分次数', '最近购入']]
   Object.values(stock).filter(s => s.stock > 0).sort((a, b) => b.value - a.value).forEach(s => rows2.push([s.brand, s.flavor, s.spec, s.stock, s.avg, s.value, s.pala !== null ? Math.round(s.pala * 10) / 10 : '', s.palaN || '', s.lastBuy || '']))
-  const rows3 = [['日期', '品牌', '口味', '规格(g)', '评分(0-10)', '评价', '备注', '记录人', '当前库存']]
+  const rows3 = [['日期', '品牌', '口味', '规格(g)', '评分(0-10)', '评价', '备注', '记录人', '当前库存', '库存均价(¥/罐)']]
   Store.ratings().slice().sort((a, b) => String(b.rate_date || '').localeCompare(String(a.rate_date || ''))).forEach(r => {
     const st = stock[skuKey(r.brand, r.flavor, r.spec_weight)]
-    rows3.push([r.rate_date || '', r.brand, r.flavor || '', num(r.spec_weight), num(r.score), PALA_LABELS[num(r.score)] || '', r.note || '', r.rec || '', st ? st.stock : ''])
+    rows3.push([r.rate_date || '', r.brand, r.flavor || '', num(r.spec_weight), num(r.score), PALA_LABELS[num(r.score)] || '', r.note || '', r.rec || '', st ? st.stock : '', st && st.buyQty > 0 ? Math.round(st.avg * 100) / 100 : ''])
   })
   return zipStore([
     { name: '[Content_Types].xml', data: u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
